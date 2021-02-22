@@ -22,7 +22,6 @@ extern "C"
 #endif
 
 #include <rmw/network_flow.h>
-#include <rmw/network_flow_array.h>
 
 #include "rcl/allocator.h"
 #include "rcl/arguments.h"
@@ -33,19 +32,11 @@ extern "C"
 #include "rcl/types.h"
 #include "rcl/visibility_control.h"
 
-typedef rmw_network_flow_t rcl_network_flow_t;
 typedef rmw_network_flow_array_t rcl_network_flow_array_t;
-typedef rmw_transport_protocol_t rcl_transport_protocol_t;
-typedef rmw_internet_protocol_t rcl_internet_protocol_t;
 
 #define rcl_get_zero_initialized_network_flow_array \
   rmw_get_zero_initialized_network_flow_array
 #define rcl_network_flow_array_fini rmw_network_flow_array_fini
-
-#define rcl_network_flow_get_transport_protocol_string \
-  rmw_network_flow_get_transport_protocol_string
-#define rcl_network_flow_get_internet_protocol_string \
-  rmw_network_flow_get_internet_protocol_string
 
 /// Get network flows of a publisher
 /**
@@ -62,8 +53,6 @@ typedef rmw_internet_protocol_t rcl_internet_protocol_t;
  * reponsible for memory deallocation by passing the `network_flow_array`
  * argument to `rcl_network_flow_array_fini` function.
  *
- * \todo TODO(anamud): Are the same network flows returned by successive calls
- * to this function?
  *
  * <hr>
  * Attribute          | Adherence
@@ -106,8 +95,6 @@ rcl_publisher_get_network_flow(
  * reponsible for memory deallocation by passing the `network_flow_array`
  * argument to `rcl_network_flow_array_fini` function.
  *
- * \todo TODO(anamud): Are the same network flows returned by successive calls
- * to this function?
  *
  * <hr>
  * Attribute          | Adherence

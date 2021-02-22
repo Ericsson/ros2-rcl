@@ -14,17 +14,27 @@
 
 #include <gtest/gtest.h>
 
+#include <map>
+#include <string>
+#include <vector>
+
 #include "mimick/mimick.h"
-#include "osrf_testing_tools_cpp/scope_exit.hpp"
+
 #include "rcl/error_handling.h"
 #include "rcl/network_flow.h"
 #include "rcl/publisher.h"
 #include "rcl/rcl.h"
 #include "rcl/subscription.h"
+
+#include "rcutils/types/string_map.h"
+
 #include "test_msgs/msg/basic_types.h"
 
 #include "./allocator_testing_utils.h"
+
 #include "../mocking_utils/patch.hpp"
+
+#include "osrf_testing_tools_cpp/scope_exit.hpp"
 
 #ifdef RMW_IMPLEMENTATION
 # define CLASSNAME_(NAME, SUFFIX) NAME ## __ ## SUFFIX
@@ -81,40 +91,59 @@ class CLASSNAME (TestNetworkFlowPublisher, RMW_IMPLEMENTATION)
 public:
   const rosidl_message_type_support_t * ts =
     ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, BasicTypes);
-  const char * topic = "chatter";
+  const char * topic_1 = "chatter";
+  const char * topic_2 = "mutter";
+  const char * topic_3 = "sing";
 
-  rcl_publisher_t publisher;
-  rcl_publisher_t publisher_unique_network_flow;
+  rcl_publisher_t publisher_1;
+  rcl_publisher_t publisher_2;
+  rcl_publisher_t publisher_3;
 
-  rcl_publisher_options_t publisher_options;
-  rcl_publisher_options_t publisher_options_unique_network_flow;
+  rcl_publisher_options_t publisher_1_options;
+  rcl_publisher_options_t publisher_2_options;
+  rcl_publisher_options_t publisher_3_options;
 
   void SetUp() override
   {
     CLASSNAME(TestNetworkFlowNode, RMW_IMPLEMENTATION) ::SetUp();
 
-    publisher = rcl_get_zero_initialized_publisher();
-    publisher_options = rcl_publisher_get_default_options();
+    publisher_1 = rcl_get_zero_initialized_publisher();
+    publisher_1_options = rcl_publisher_get_default_options();
     rcl_ret_t ret = rcl_publisher_init(
-      &publisher, this->node_ptr, ts, topic, &publisher_options);
+      &publisher_1, this->node_ptr, ts, topic_1, &publisher_1_options);
     ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
 
-    publisher_unique_network_flow = rcl_get_zero_initialized_publisher();
-    publisher_options_unique_network_flow = rcl_publisher_get_default_options();
-    publisher_options_unique_network_flow.rmw_publisher_options.require_unique_network_flow =
+    publisher_2 = rcl_get_zero_initialized_publisher();
+    publisher_2_options = rcl_publisher_get_default_options();
+    publisher_2_options.rmw_publisher_options.require_unique_network_flow =
       RMW_UNIQUE_NETWORK_FLOW_STRICTLY_REQUIRED;
     ret = rcl_publisher_init(
-      &publisher_unique_network_flow, this->node_ptr, ts, topic,
-      &publisher_options_unique_network_flow);
+      &publisher_2, this->node_ptr, ts, topic_2,
+      &publisher_2_options);
+    ASSERT_EQ(
+      ret == RCL_RET_OK || ret == RCL_RET_UNSUPPORTED || ret == RCL_RET_ERROR,
+      true) << rcl_get_error_string().str;
+    rcl_reset_error();
+
+    publisher_3 = rcl_get_zero_initialized_publisher();
+    publisher_3_options = rcl_publisher_get_default_options();
+    publisher_3_options.rmw_publisher_options.require_unique_network_flow =
+      RMW_UNIQUE_NETWORK_FLOW_OPTIONALLY_REQUIRED;
+    ret = rcl_publisher_init(
+      &publisher_3, this->node_ptr, ts, topic_3,
+      &publisher_3_options);
     ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
   }
 
   void TearDown() override
   {
-    rcl_ret_t ret = rcl_publisher_fini(&publisher, this->node_ptr);
+    rcl_ret_t ret = rcl_publisher_fini(&publisher_1, this->node_ptr);
     EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
 
-    ret = rcl_publisher_fini(&publisher_unique_network_flow, this->node_ptr);
+    ret = rcl_publisher_fini(&publisher_2, this->node_ptr);
+    EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
+
+    ret = rcl_publisher_fini(&publisher_3, this->node_ptr);
     EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
 
     CLASSNAME(TestNetworkFlowNode, RMW_IMPLEMENTATION) ::TearDown();
@@ -127,40 +156,59 @@ class CLASSNAME (TestNetworkFlowSubscription, RMW_IMPLEMENTATION)
 public:
   const rosidl_message_type_support_t * ts =
     ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, BasicTypes);
-  const char * topic = "chatter";
+  const char * topic_1 = "chatter";
+  const char * topic_2 = "mutter";
+  const char * topic_3 = "sing";
 
-  rcl_subscription_t subscription;
-  rcl_subscription_t subscription_unique_network_flow;
+  rcl_subscription_t subscription_1;
+  rcl_subscription_t subscription_2;
+  rcl_subscription_t subscription_3;
 
-  rcl_subscription_options_t subscription_options;
-  rcl_subscription_options_t subscription_options_unique_network_flow;
+  rcl_subscription_options_t subscription_1_options;
+  rcl_subscription_options_t subscription_2_options;
+  rcl_subscription_options_t subscription_3_options;
 
   void SetUp() override
   {
     CLASSNAME(TestNetworkFlowNode, RMW_IMPLEMENTATION) ::SetUp();
 
-    subscription = rcl_get_zero_initialized_subscription();
-    subscription_options = rcl_subscription_get_default_options();
+    subscription_1 = rcl_get_zero_initialized_subscription();
+    subscription_1_options = rcl_subscription_get_default_options();
     rcl_ret_t ret = rcl_subscription_init(
-      &subscription, this->node_ptr, ts, topic, &subscription_options);
+      &subscription_1, this->node_ptr, ts, topic_1, &subscription_1_options);
     ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
 
-    subscription_unique_network_flow = rcl_get_zero_initialized_subscription();
-    subscription_options_unique_network_flow = rcl_subscription_get_default_options();
-    subscription_options_unique_network_flow.rmw_subscription_options.require_unique_network_flow =
+    subscription_2 = rcl_get_zero_initialized_subscription();
+    subscription_2_options = rcl_subscription_get_default_options();
+    subscription_2_options.rmw_subscription_options.require_unique_network_flow =
       RMW_UNIQUE_NETWORK_FLOW_STRICTLY_REQUIRED;
     ret = rcl_subscription_init(
-      &subscription_unique_network_flow, this->node_ptr, ts, topic,
-      &subscription_options_unique_network_flow);
+      &subscription_2, this->node_ptr, ts, topic_2,
+      &subscription_2_options);
+    ASSERT_EQ(
+      ret == RCL_RET_OK || ret == RCL_RET_UNSUPPORTED || ret == RCL_RET_ERROR,
+      true) << rcl_get_error_string().str;
+    rcl_reset_error();
+
+    subscription_3 = rcl_get_zero_initialized_subscription();
+    subscription_3_options = rcl_subscription_get_default_options();
+    subscription_3_options.rmw_subscription_options.require_unique_network_flow =
+      RMW_UNIQUE_NETWORK_FLOW_OPTIONALLY_REQUIRED;
+    ret = rcl_subscription_init(
+      &subscription_3, this->node_ptr, ts, topic_3,
+      &subscription_3_options);
     ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
   }
 
   void TearDown() override
   {
-    rcl_ret_t ret = rcl_subscription_fini(&subscription, this->node_ptr);
+    rcl_ret_t ret = rcl_subscription_fini(&subscription_1, this->node_ptr);
     EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
 
-    ret = rcl_subscription_fini(&subscription_unique_network_flow, this->node_ptr);
+    ret = rcl_subscription_fini(&subscription_2, this->node_ptr);
+    EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
+
+    ret = rcl_subscription_fini(&subscription_3, this->node_ptr);
     EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
 
     CLASSNAME(TestNetworkFlowNode, RMW_IMPLEMENTATION) ::TearDown();
@@ -179,91 +227,104 @@ TEST_F(
   // Invalid publisher
   ret = rcl_publisher_get_network_flow(
     nullptr, &allocator, &network_flow_array);
-  EXPECT_EQ(RCL_RET_INVALID_ARGUMENT, ret);
+  EXPECT_EQ(ret == RCL_RET_INVALID_ARGUMENT || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 
   // Invalid allocator
   ret = rcl_publisher_get_network_flow(
-    &this->publisher, nullptr, &network_flow_array);
-  EXPECT_EQ(RCL_RET_INVALID_ARGUMENT, ret);
+    &this->publisher_1, nullptr, &network_flow_array);
+  EXPECT_EQ(ret == RCL_RET_INVALID_ARGUMENT || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 
   // Invalid network_flow_array
   ret = rcl_publisher_get_network_flow(
-    &this->publisher, &allocator, nullptr);
-  EXPECT_EQ(RCL_RET_INVALID_ARGUMENT, ret);
+    &this->publisher_1, &allocator, nullptr);
+  EXPECT_EQ(ret == RCL_RET_INVALID_ARGUMENT || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 
   // Failing allocator
   set_failing_allocator_is_failing(failing_allocator, true);
   ret = rcl_publisher_get_network_flow(
-    &this->publisher, &failing_allocator, &network_flow_array);
-  EXPECT_EQ(RCL_RET_BAD_ALLOC, ret);
+    &this->publisher_1, &failing_allocator, &network_flow_array);
+  EXPECT_EQ(ret == RCL_RET_BAD_ALLOC || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 
   // Non-zero network_flow_array
   network_flow_array.size = 1;
   ret = rcl_publisher_get_network_flow(
-    &this->publisher, &allocator, &network_flow_array);
-  EXPECT_EQ(RCL_RET_ERROR, ret);
+    &this->publisher_1, &allocator, &network_flow_array);
+  EXPECT_EQ(ret == RCL_RET_ERROR || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 }
 
 TEST_F(CLASSNAME(TestNetworkFlowPublisher, RMW_IMPLEMENTATION), test_publisher_get_network_flow) {
   rcl_ret_t ret_1;
   rcl_ret_t ret_2;
-  rcl_ret_t ret_3 = false;
+  bool flag = false;
   rcl_allocator_t allocator = rcl_get_default_allocator();
 
   // Get network flow of ordinary publisher
-  rcl_network_flow_array_t network_flow_array = rcl_get_zero_initialized_network_flow_array();
+  rcl_network_flow_array_t network_flow_array_1 = rcl_get_zero_initialized_network_flow_array();
   ret_1 = rcl_publisher_get_network_flow(
-    &this->publisher, &allocator, &network_flow_array);
+    &this->publisher_1, &allocator, &network_flow_array_1);
   if (ret_1 == RCL_RET_OK || ret_1 == RCL_RET_UNSUPPORTED) {
-    ret_3 = true;
+    flag = true;
   }
-  EXPECT_EQ(true, ret_3);
-  ret_3 = false;
+  EXPECT_EQ(true, flag);
+  flag = false;
 
   // Get network flow of publisher with unique network flow
-  rcl_network_flow_array_t network_flow_array_unique =
+  rcl_network_flow_array_t network_flow_array_2 =
     rcl_get_zero_initialized_network_flow_array();
-  ret_2 = rcl_publisher_get_network_flow(
-    &this->publisher_unique_network_flow, &allocator, &network_flow_array_unique);
-  if (ret_2 == RCL_RET_OK || ret_2 == RCL_RET_UNSUPPORTED) {
-    ret_3 = true;
+  if (rcl_publisher_is_valid(&this->publisher_2)) {
+    rcl_network_flow_array_t network_flow_array_2 =
+      rcl_get_zero_initialized_network_flow_array();
+    ret_2 = rcl_publisher_get_network_flow(
+      &this->publisher_2, &allocator, &network_flow_array_2);
+    if (ret_2 == RCL_RET_OK || ret_2 == RCL_RET_UNSUPPORTED) {
+      flag = true;
+    }
+    EXPECT_EQ(true, flag);
+    flag = false;
+  } else {
+    ret_2 = RCL_RET_ERROR;
   }
-  EXPECT_EQ(true, ret_3);
-  ret_3 = false;
 
   if (ret_1 == RCL_RET_OK && ret_2 == RCL_RET_OK) {
     // Expect network flows not to be same
-    for (size_t i = 0; i < network_flow_array.size; i++) {
-      for (size_t j = 0; j < network_flow_array_unique.size; j++) {
-        bool strcmp_ret = false;
-        if (strcmp(
-            network_flow_array.network_flow[i].internet_address,
-            network_flow_array_unique.network_flow[j].internet_address) == 0)
-        {
-          strcmp_ret = true;
+    for (size_t i = 0; i < network_flow_array_1.size; i++) {
+      // Compose as STL map to simplify comparison
+      // STL map 1
+      std::map<std::string, std::string> network_flow_1;
+      const char * key_1 = rcutils_string_map_get_next_key(
+        &network_flow_array_1.network_flow[i],
+        nullptr);
+      while (key_1 != NULL) {
+        network_flow_1[key_1] =
+          rcutils_string_map_get(&network_flow_array_1.network_flow[i], key_1);
+        key_1 = rcutils_string_map_get_next_key(&network_flow_array_1.network_flow[i], key_1);
+      }
+      for (size_t j = 0; j < network_flow_array_2.size; j++) {
+        // STL map 2
+        std::map<std::string, std::string> network_flow_2;
+        const char * key_2 = rcutils_string_map_get_next_key(
+          &network_flow_array_2.network_flow[j],
+          nullptr);
+        while (key_2 != NULL) {
+          network_flow_2[key_2] = rcutils_string_map_get(
+            &network_flow_array_2.network_flow[j],
+            key_2);
+          key_2 = rcutils_string_map_get_next_key(&network_flow_array_2.network_flow[j], key_2);
         }
-        EXPECT_FALSE(
-          network_flow_array.network_flow[i].transport_protocol ==
-          network_flow_array_unique.network_flow[j].transport_protocol &&
-          network_flow_array.network_flow[i].internet_protocol ==
-          network_flow_array_unique.network_flow[j].internet_protocol &&
-          network_flow_array.network_flow[i].transport_port ==
-          network_flow_array_unique.network_flow[j].transport_port &&
-          network_flow_array.network_flow[i].flow_label ==
-          network_flow_array_unique.network_flow[j].flow_label &&
-          strcmp_ret);
+        // Compare
+        EXPECT_FALSE(network_flow_1 == network_flow_2);
       }
     }
   }
 
   // Release resources
-  rcl_network_flow_array_fini(&network_flow_array, &allocator);
-  rcl_network_flow_array_fini(&network_flow_array_unique, &allocator);
+  rcl_network_flow_array_fini(&network_flow_array_1, &allocator);
+  rcl_network_flow_array_fini(&network_flow_array_2, &allocator);
 }
 
 TEST_F(
@@ -283,28 +344,28 @@ TEST_F(
 
   // Invalid allocator
   ret = rcl_subscription_get_network_flow(
-    &this->subscription, nullptr, &network_flow_array);
-  EXPECT_EQ(RCL_RET_INVALID_ARGUMENT, ret);
+    &this->subscription_1, nullptr, &network_flow_array);
+  EXPECT_EQ(ret == RCL_RET_INVALID_ARGUMENT || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 
   // Invalid network_flow_array
   ret = rcl_subscription_get_network_flow(
-    &this->subscription, &allocator, nullptr);
-  EXPECT_EQ(RCL_RET_INVALID_ARGUMENT, ret);
+    &this->subscription_1, &allocator, nullptr);
+  EXPECT_EQ(ret == RCL_RET_INVALID_ARGUMENT || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 
   // Failing allocator
   set_failing_allocator_is_failing(failing_allocator, true);
   ret = rcl_subscription_get_network_flow(
-    &this->subscription, &failing_allocator, &network_flow_array);
-  EXPECT_EQ(RCL_RET_BAD_ALLOC, ret);
+    &this->subscription_1, &failing_allocator, &network_flow_array);
+  EXPECT_EQ(ret == RCL_RET_BAD_ALLOC || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 
   // Non-zero network_flow_array
   network_flow_array.size = 1;
   ret = rcl_subscription_get_network_flow(
-    &this->subscription, &allocator, &network_flow_array);
-  EXPECT_EQ(RCL_RET_ERROR, ret);
+    &this->subscription_1, &allocator, &network_flow_array);
+  EXPECT_EQ(ret == RCL_RET_ERROR || ret == RCL_RET_UNSUPPORTED, true);
   rcl_reset_error();
 }
 
@@ -314,56 +375,69 @@ TEST_F(
     RMW_IMPLEMENTATION), test_subscription_get_network_flow) {
   rcl_ret_t ret_1;
   rcl_ret_t ret_2;
-  rcl_ret_t ret_3 = false;
+  bool flag = false;
   rcl_allocator_t allocator = rcl_get_default_allocator();
 
   // Get network flow of ordinary subscription
-  rcl_network_flow_array_t network_flow_array = rcl_get_zero_initialized_network_flow_array();
+  rcl_network_flow_array_t network_flow_array_1 = rcl_get_zero_initialized_network_flow_array();
   ret_1 = rcl_subscription_get_network_flow(
-    &this->subscription, &allocator, &network_flow_array);
+    &this->subscription_1, &allocator, &network_flow_array_1);
   if (ret_1 == RCL_RET_OK || ret_1 == RCL_RET_UNSUPPORTED) {
-    ret_3 = true;
+    flag = true;
   }
-  EXPECT_EQ(true, ret_3);
-  ret_3 = false;
+  EXPECT_EQ(true, flag);
+  flag = false;
 
   // Get network flow of subscription with unique network flow
-  rcl_network_flow_array_t network_flow_array_unique =
+  rcl_network_flow_array_t network_flow_array_2 =
     rcl_get_zero_initialized_network_flow_array();
-  ret_2 = rcl_subscription_get_network_flow(
-    &this->subscription_unique_network_flow, &allocator, &network_flow_array_unique);
-  if (ret_2 == RCL_RET_OK || ret_2 == RCL_RET_UNSUPPORTED) {
-    ret_3 = true;
+  if (rcl_subscription_is_valid(&this->subscription_2)) {
+    rcl_network_flow_array_t network_flow_array_2 =
+      rcl_get_zero_initialized_network_flow_array();
+    ret_2 = rcl_subscription_get_network_flow(
+      &this->subscription_2, &allocator, &network_flow_array_2);
+    if (ret_2 == RCL_RET_OK || ret_2 == RCL_RET_UNSUPPORTED) {
+      flag = true;
+    }
+    EXPECT_EQ(true, flag);
+    flag = false;
+  } else {
+    ret_2 = RCL_RET_ERROR;
   }
-  EXPECT_EQ(true, ret_3);
-  ret_3 = false;
 
   if (ret_1 == RCL_RET_OK && ret_2 == RCL_RET_OK) {
     // Expect network flows not to be same
-    for (size_t i = 0; i < network_flow_array.size; i++) {
-      for (size_t j = 0; j < network_flow_array_unique.size; j++) {
-        bool strcmp_ret = false;
-        if (strcmp(
-            network_flow_array.network_flow[i].internet_address,
-            network_flow_array_unique.network_flow[j].internet_address) == 0)
-        {
-          strcmp_ret = true;
+    for (size_t i = 0; i < network_flow_array_1.size; i++) {
+      // Compose as STL map to simplify comparison
+      // STL map 1
+      std::map<std::string, std::string> network_flow_1;
+      const char * key_1 = rcutils_string_map_get_next_key(
+        &network_flow_array_1.network_flow[i],
+        nullptr);
+      while (key_1 != NULL) {
+        network_flow_1[key_1] =
+          rcutils_string_map_get(&network_flow_array_1.network_flow[i], key_1);
+        key_1 = rcutils_string_map_get_next_key(&network_flow_array_1.network_flow[i], key_1);
+      }
+      for (size_t j = 0; j < network_flow_array_2.size; j++) {
+        // STL map 2
+        std::map<std::string, std::string> network_flow_2;
+        const char * key_2 = rcutils_string_map_get_next_key(
+          &network_flow_array_2.network_flow[j],
+          nullptr);
+        while (key_2 != NULL) {
+          network_flow_2[key_2] = rcutils_string_map_get(
+            &network_flow_array_2.network_flow[j],
+            key_2);
+          key_2 = rcutils_string_map_get_next_key(&network_flow_array_2.network_flow[j], key_2);
         }
-        EXPECT_FALSE(
-          network_flow_array.network_flow[i].transport_protocol ==
-          network_flow_array_unique.network_flow[j].transport_protocol &&
-          network_flow_array.network_flow[i].internet_protocol ==
-          network_flow_array_unique.network_flow[j].internet_protocol &&
-          network_flow_array.network_flow[i].transport_port ==
-          network_flow_array_unique.network_flow[j].transport_port &&
-          network_flow_array.network_flow[i].flow_label ==
-          network_flow_array_unique.network_flow[j].flow_label &&
-          strcmp_ret);
+        // Compare
+        EXPECT_FALSE(network_flow_1 == network_flow_2);
       }
     }
   }
 
   // Release resources
-  rcl_network_flow_array_fini(&network_flow_array, &allocator);
-  rcl_network_flow_array_fini(&network_flow_array_unique, &allocator);
+  rcl_network_flow_array_fini(&network_flow_array_1, &allocator);
+  rcl_network_flow_array_fini(&network_flow_array_2, &allocator);
 }

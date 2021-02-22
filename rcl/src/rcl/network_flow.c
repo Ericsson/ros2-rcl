@@ -29,7 +29,7 @@ extern "C"
 
 #include "rmw/error_handling.h"
 #include "rmw/get_network_flow.h"
-#include "rmw/network_flow_array.h"
+#include "rmw/network_flow.h"
 #include "rmw/types.h"
 
 #include "./common.h"
